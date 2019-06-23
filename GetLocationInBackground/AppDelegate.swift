@@ -8,15 +8,31 @@
 
 import UIKit
 import CoreData
+import CoreLocation
+import UserNotifications
 
 @UIApplicationMain
-class AppDelegate: UIResponder, UIApplicationDelegate {
+class AppDelegate: UIResponder, UIApplicationDelegate, CLLocationManagerDelegate {
 
     var window: UIWindow?
+    
+    var locationManager: CLLocationManager!
+    let center = UNUserNotificationCenter.current()
 
+    func application(_ application: UIApplication, willFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        
+        startLocationManager()
+        return true
+    }
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
+        
+        //要求接收push notification
+        center.requestAuthorization(options: [.alert, .sound]) { granted, error in
+        }
+        
+        startLocationManager()
         return true
     }
 
@@ -87,6 +103,49 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                 fatalError("Unresolved error \(nserror), \(nserror.userInfo)")
             }
         }
+    }
+    
+    func startLocationManager() {
+        self.locationManager = CLLocationManager()
+        self.locationManager.allowsBackgroundLocationUpdates = true // 開啟背景更新(預設為 false)
+        self.locationManager.pausesLocationUpdatesAutomatically = false // 不間斷的在背景更新(預設為 true)
+        self.locationManager.distanceFilter = kCLDistanceFilterNone
+        locationManager.desiredAccuracy = kCLLocationAccuracyBest
+        self.locationManager.delegate = self
+
+        locationManager.startMonitoringSignificantLocationChanges()
+    }
+    
+    //取得位置成功的callback
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        print("didUpdateLocations: \(locations.last!)")
+        
+        let location: CLLocation = locations.last!
+        
+        let latitude: String = String((Float(location.coordinate.latitude)))
+        let longitude: String = String((Float(location.coordinate.longitude)))
+        
+        
+        // 1
+        let content = UNMutableNotificationContent()
+        content.title = "Get New Location 📌"
+        content.body = latitude
+        content.sound = .default
+        
+        // 2
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+        let request = UNNotificationRequest(identifier: UUID.init().uuidString, content: content, trigger: trigger)
+        
+        // 3
+        center.add(request, withCompletionHandler: nil)
+        
+        //do something after get location
+        //.....
+    }
+    
+    //取得位置失敗的callback
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        print(error.localizedDescription)
     }
 
 }
